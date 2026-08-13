@@ -1,39 +1,75 @@
 /**
  * ranking.js
- * Sistema de ranking TOP 10, isolado do resto do jogo.
- *
- * Hoje persiste via LocalStorage (através de storage.js).
- * No futuro, basta substituir a implementação interna destas funções
- * por chamadas a uma API (ex: rankingAPI.addScore(name, score)) sem
- * precisar alterar quem consome o módulo Ranking.
+ * Sistema de ranking TOP 10 sincronizado com o Firebase Firestore.
  */
 const Ranking = (() => {
   const KEY = 'ranking';
   const MAX_ENTRIES = 10;
   const NAME_MAX_LENGTH = 15;
 
-  /** Carrega o ranking completo (já ordenado e limitado a 10). */
+  // Configuração do Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQ_kLKPRwkBHYzC8nQjcqbpeR2HTU-BmA",
+    authDomain: "voltrunner.firebaseapp.com",
+    databaseURL: "https://voltrunner-default-rtdb.firebaseio.com",
+    projectId: "voltrunner",
+    storageBucket: "voltrunner.firebasestorage.app",
+    messagingSenderId: "579510817053",
+    appId: "1:579510817053:web:afe53385369d06b5f4d1f4",
+    measurementId: "G-QSVCML07LH"
+  };
+
+  let db = null;
+  if (typeof firebase !== 'undefined') {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.firestore();
+  }
+
   function loadRanking() {
     const data = Storage.get(KEY, []);
     return Array.isArray(data) ? data : [];
   }
 
-  /** Salva a lista de ranking fornecida. */
   function saveRanking(list) {
     Storage.set(KEY, list);
   }
 
-  /** Ordena da maior para a menor pontuação. */
   function sortRanking(list) {
     return [...list].sort((a, b) => b.score - a.score);
   }
 
-  /** Retorna apenas os 10 melhores de uma lista. */
   function getTop10() {
     return sortRanking(loadRanking()).slice(0, MAX_ENTRIES);
   }
 
-  /** Verifica se uma pontuação seria suficiente para entrar no TOP 10. */
+  /** Busca o TOP 10 direto do Firestore */
+  async function fetchGlobalTop10() {
+    if (!db) return getTop10();
+
+    try {
+      const snapshot = await db.collection('scores')
+        .orderBy('score', 'desc')
+        .limit(MAX_ENTRIES)
+        .get();
+
+      const globalList = [];
+      snapshot.forEach(doc => {
+        globalList.push(doc.data());
+      });
+
+      if (globalList.length > 0) {
+        saveRanking(globalList); // Atualiza cache local
+        return globalList;
+      }
+    } catch (err) {
+      console.error("Erro ao buscar ranking global, usando local:", err);
+    }
+
+    return getTop10();
+  }
+
   function isTop10(score) {
     const top = getTop10();
     if (top.length < MAX_ENTRIES) return score > 0;
@@ -46,34 +82,45 @@ const Ranking = (() => {
     return name;
   }
 
-  /**
-   * Adiciona uma nova pontuação ao ranking, respeitando o TOP 10.
-   * Retorna { added: boolean, top10: Array }
-   */
   function addScore(name, score) {
     const cleanName = sanitizeName(name);
     if (!cleanName) return { added: false, top10: getTop10() };
 
+    const finalScore = Math.max(0, Math.floor(score));
+
     const entry = {
       name: cleanName,
-      score: Math.max(0, Math.floor(score)),
+      score: finalScore,
       date: new Date().toISOString().slice(0, 10)
     };
 
+    // 1. Salva local
     let list = loadRanking();
     list.push(entry);
     list = sortRanking(list).slice(0, MAX_ENTRIES);
     saveRanking(list);
 
+    // 2. Envia para o Firestore
+    if (db) {
+      db.collection('scores').add({
+        name: cleanName,
+        score: finalScore,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error("Erro ao salvar na nuvem:", err));
+    }
+
     return { added: true, top10: list };
   }
 
   /**
-   * Renderiza o ranking em um elemento <ol>/<ul> do DOM.
-   * emptyEl é opcional: exibido quando não há pontuações.
+   * Renderiza o ranking global (busca da nuvem).
    */
-  function renderRanking(listEl, emptyEl) {
-    const top10 = getTop10();
+  async function renderRanking(listEl, emptyEl) {
+    if (!listEl) return;
+
+    listEl.innerHTML = '<li style="text-align:center; padding:10px;">Carregando...</li>';
+
+    const top10 = await fetchGlobalTop10();
     listEl.innerHTML = '';
 
     if (top10.length === 0) {
@@ -104,7 +151,6 @@ const Ranking = (() => {
     return div.innerHTML;
   }
 
-  /** Melhor pontuação já registrada (0 se ranking vazio). */
   function getBestScore() {
     const top10 = getTop10();
     return top10.length ? top10[0].score : 0;
