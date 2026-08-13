@@ -1,6 +1,6 @@
 /**
  * ranking.js
- * Ranking TOP 10 sincronizado com o Realtime Database do Firebase (Com UID único por jogador).
+ * Ranking TOP 10 sincronizado com o Realtime Database do Firebase (Com UID único por jogador e reset automático).
  */
 const Ranking = (() => {
   const KEY = 'ranking';
@@ -55,6 +55,10 @@ const Ranking = (() => {
         const sortedGlobal = sortRanking(globalList).slice(0, MAX_ENTRIES);
         saveRanking(sortedGlobal); // Salva no cache local
         return sortedGlobal;
+      } else {
+        // RESET: Se o Firebase estiver vazio, limpa o cache local também
+        saveRanking([]);
+        return [];
       }
     } catch (err) {
       console.error("Erro ao carregar o ranking global:", err);
