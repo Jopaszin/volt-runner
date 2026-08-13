@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>VOLT RUNNER</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ GAME STAGE ============ -->
+  <div id="stage">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD (visible durante o jogo) -->
+    <div id="hud" class="hidden">
+      <div class="hud-row">
+        <span id="hud-score">SCORE: 000000</span>
+        <span id="hud-hiscore">HI-SCORE: 000000</span>
+      </div>
+      <button id="btn-mute" class="icon-btn" aria-label="Ativar/Desativar som">🔊</button>
+    </div>
+
+    <!-- Controles móveis -->
+    <div id="mobile-controls" class="hidden">
+      <button id="btn-jump" class="touch-btn">⬆<span>PULAR</span></button>
+      <button id="btn-duck" class="touch-btn">⬇<span>ABAIXAR</span></button>
+    </div>
+
+    <!-- ============ MENU PRINCIPAL ============ -->
+    <div id="screen-menu" class="screen">
+      <div class="screen-inner">
+        <h1 class="game-title">VOLT<span class="accent">RUNNER</span></h1>
+        <p class="subtitle">corra. desvie. sobreviva.</p>
+
+        <div class="menu-buttons">
+          <button id="btn-play" class="btn btn-primary">▶ JOGAR</button>
+          <button id="btn-ranking" class="btn">🏆 RANKING</button>
+          <button id="btn-howto" class="btn">❓ COMO JOGAR</button>
+        </div>
+
+        <p class="best-score">MELHOR PONTUAÇÃO: <span id="menu-best-score">0</span></p>
+
+        <button id="btn-mute-menu" class="icon-btn sound-toggle">🔊 SOM</button>
+      </div>
+    </div>
+
+    <!-- ============ COMO JOGAR ============ -->
+    <div id="screen-howto" class="screen hidden">
+      <div class="screen-inner">
+        <h2 class="screen-title">COMO JOGAR</h2>
+        <ul class="howto-list">
+          <li><strong>ESPAÇO / ↑</strong> — pular sobre obstáculos baixos</li>
+          <li><strong>↓</strong> — abaixar para desviar de obstáculos aéreos</li>
+          <li><strong>Toque na tela</strong> (mobile) — use os botões ⬆ e ⬇</li>
+          <li>Sobreviva o máximo de tempo possível para aumentar sua pontuação</li>
+          <li>A velocidade aumenta gradualmente — fique atento!</li>
+          <li>Ao colidir com um obstáculo, a partida termina</li>
+        </ul>
+        <button id="btn-howto-back" class="btn btn-primary">VOLTAR</button>
+      </div>
+    </div>
+
+    <!-- ============ RANKING ============ -->
+    <div id="screen-ranking" class="screen hidden">
+      <div class="screen-inner">
+        <h2 class="screen-title">🏆 TOP 10</h2>
+        <ol id="ranking-list" class="ranking-list"></ol>
+        <p id="ranking-empty" class="ranking-empty hidden">Nenhuma pontuação registrada ainda.</p>
+        <button id="btn-ranking-back" class="btn btn-primary">VOLTAR</button>
+      </div>
+    </div>
+
+    <!-- ============ GAME OVER ============ -->
+    <div id="screen-gameover" class="screen hidden">
+      <div class="screen-inner">
+        <h2 class="screen-title gameover-title">GAME OVER</h2>
+        <p id="new-record-banner" class="new-record hidden">🎉 NOVO RECORDE! VOCÊ ENTROU NO TOP 10! 🎉</p>
+
+        <div class="score-summary">
+          <p>PONTUAÇÃO: <span id="final-score">0</span></p>
+          <p>RECORDE: <span id="final-best">0</span></p>
+        </div>
+
+        <div id="name-entry" class="name-entry hidden">
+          <label for="player-name">DIGITE SEU NOME:</label>
+          <input id="player-name" type="text" maxlength="15" placeholder="JOGADOR" autocomplete="off">
+          <button id="btn-save-score" class="btn btn-primary">SALVAR NO RANKING</button>
+        </div>
+
+        <div class="gameover-buttons">
+          <button id="btn-retry" class="btn btn-primary">▶ JOGAR NOVAMENTE</button>
+          <button id="btn-gameover-menu" class="btn">MENU</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/storage.js"></script>
+<script src="js/ranking.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/player.js"></script>
+<script src="js/obstacles.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
