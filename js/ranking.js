@@ -1,13 +1,12 @@
 /**
  * ranking.js
- * Sistema de ranking TOP 10 sincronizado com o Firebase Firestore.
+ * Ranking TOP 10 sincronizado com o Realtime Database do Firebase.
  */
 const Ranking = (() => {
   const KEY = 'ranking';
   const MAX_ENTRIES = 10;
   const NAME_MAX_LENGTH = 15;
 
-  // Configuração do Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyAQ_kLKPRwkBHYzC8nQjcqbpeR2HTU-BmA",
     authDomain: "voltrunner.firebaseapp.com",
@@ -24,7 +23,7 @@ const Ranking = (() => {
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
-    db = firebase.firestore();
+    db = firebase.database();
   }
 
   function loadRanking() {
@@ -44,27 +43,21 @@ const Ranking = (() => {
     return sortRanking(loadRanking()).slice(0, MAX_ENTRIES);
   }
 
-  /** Busca o TOP 10 direto do Firestore */
   async function fetchGlobalTop10() {
     if (!db) return getTop10();
 
     try {
-      const snapshot = await db.collection('scores')
-        .orderBy('score', 'desc')
-        .limit(MAX_ENTRIES)
-        .get();
+      const snapshot = await db.ref('scores').once('value');
+      const data = snapshot.val();
 
-      const globalList = [];
-      snapshot.forEach(doc => {
-        globalList.push(doc.data());
-      });
-
-      if (globalList.length > 0) {
-        saveRanking(globalList); // Atualiza cache local
-        return globalList;
+      if (data) {
+        const globalList = Object.values(data);
+        const sortedGlobal = sortRanking(globalList).slice(0, MAX_ENTRIES);
+        saveRanking(sortedGlobal); // Salva no cache local
+        return sortedGlobal;
       }
     } catch (err) {
-      console.error("Erro ao buscar ranking global, usando local:", err);
+      console.error("Erro ao carregar o ranking global:", err);
     }
 
     return getTop10();
@@ -94,27 +87,24 @@ const Ranking = (() => {
       date: new Date().toISOString().slice(0, 10)
     };
 
-    // 1. Salva local
+    // 1. Salva localmente (resposta imediata para a UI do jogo)
     let list = loadRanking();
     list.push(entry);
     list = sortRanking(list).slice(0, MAX_ENTRIES);
     saveRanking(list);
 
-    // 2. Envia para o Firestore
+    // 2. Envia para a nuvem
     if (db) {
-      db.collection('scores').add({
+      db.ref('scores').push({
         name: cleanName,
         score: finalScore,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error("Erro ao salvar na nuvem:", err));
+        createdAt: Date.now()
+      }).catch(err => console.error("Erro ao salvar no banco:", err));
     }
 
     return { added: true, top10: list };
   }
 
-  /**
-   * Renderiza o ranking global (busca da nuvem).
-   */
   async function renderRanking(listEl, emptyEl) {
     if (!listEl) return;
 
