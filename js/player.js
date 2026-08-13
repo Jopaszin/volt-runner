@@ -20,7 +20,7 @@ class Player {
 
     this.velocityY = 0;
     this.gravity = 2600;      // px/s^2
-    this.jumpForce = -900;    // px/s
+    this.jumpForce = -650;    // px/s
     this.maxFallSpeed = 1800;
 
     this.isJumping = false;

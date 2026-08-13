@@ -24,9 +24,9 @@
   let score = 0;
   let hiscore = Ranking.getBestScore();
 
-  const BASE_SPEED = 320;      // px/s
-  const MAX_SPEED = 780;       // px/s (limite máximo)
-  const SPEED_PER_SCORE = 0.11; // incremento de velocidade por ponto
+  // ============ AJUSTES DE DIFICULDADE E VELOCIDADE INFINITA ============
+  const BASE_SPEED = 350;       // Velocidade inicial (px/s)
+  const SPEED_PER_SCORE = 0.18; // Aumento continuo por pontuacao (sem limite maximo)
   let speed = BASE_SPEED;
 
   let lastTime = 0;
@@ -34,7 +34,7 @@
   let scoreFlashTimer = 0;
   let lastScoreTickAt = 0;
 
-  // parallax / cenário
+  // Parallax / cenário
   let dayNightPhase = 0; // 0..1 ciclo completo
   const bgLayers = {
     farStars: [],
@@ -111,14 +111,15 @@
       }
     });
 
-    // toque diretamente no canvas: parte de cima pula, parte de baixo abaixa
+    // Toque diretamente no canvas: metade superior pula, metade inferior agacha
     canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (state !== STATE.PLAYING) return;
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       const relY = touch.clientY - rect.top;
-      if (relY < rect.height * 0.55) {
+      
+      if (relY < rect.height * 0.50) {
         handleJumpInput();
       } else {
         handleDuckInput(true);
@@ -129,6 +130,10 @@
       e.preventDefault();
       handleDuckInput(false);
     }, { passive: false });
+
+    canvas.addEventListener('touchcancel', (e) => {
+      handleDuckInput(false);
+    });
 
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 150));
@@ -189,7 +194,6 @@
 
   // ============ CENÁRIO (parallax + ciclo dia/noite) ============
   function updateBackground(dt) {
-    // o ciclo dia/noite avança lentamente com a pontuação/tempo
     dayNightPhase += dt * 0.02;
     if (dayNightPhase > 1) dayNightPhase -= 1;
 
@@ -209,8 +213,7 @@
   }
 
   function skyColors() {
-    // interpola entre paleta "dia" e "noite" usando dayNightPhase (0=dia, 0.5=noite)
-    const t = (Math.sin(dayNightPhase * Math.PI * 2 - Math.PI / 2) + 1) / 2; // 0..1, 0=noite profunda
+    const t = (Math.sin(dayNightPhase * Math.PI * 2 - Math.PI / 2) + 1) / 2;
     const day = { top: [19, 27, 46], bottom: [30, 46, 77] };
     const night = { top: [5, 7, 16], bottom: [9, 12, 24] };
     const lerp = (a, b) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -229,7 +232,6 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, cssWidth, groundY);
 
-    // estrelas (mais visíveis à noite)
     if (colors.nightAmount > 0.05) {
       ctx.save();
       ctx.globalAlpha = colors.nightAmount;
@@ -243,7 +245,6 @@
       ctx.restore();
     }
 
-    // sol/lua
     const orbY = groundY * 0.22 + Math.cos(dayNightPhase * Math.PI * 2) * groundY * 0.08;
     const orbX = cssWidth * 0.82;
     ctx.save();
@@ -256,7 +257,6 @@
     ctx.fill();
     ctx.restore();
 
-    // montanhas (parallax médio)
     ctx.save();
     ctx.fillStyle = `rgba(${colors.top[0] + 12},${colors.top[1] + 14},${colors.top[2] + 22},0.9)`;
     bgLayers.mountains.forEach(m => {
@@ -269,14 +269,12 @@
     });
     ctx.restore();
 
-    // chão
     const groundGrad = ctx.createLinearGradient(0, groundY, 0, cssHeight);
     groundGrad.addColorStop(0, '#0d1526');
     groundGrad.addColorStop(1, '#060910');
     ctx.fillStyle = groundGrad;
     ctx.fillRect(0, groundY, cssWidth, cssHeight - groundY);
 
-    // linha neon do chão
     ctx.save();
     ctx.strokeStyle = 'rgba(0,240,255,0.55)';
     ctx.shadowColor = 'rgba(0,240,255,0.6)';
@@ -288,7 +286,6 @@
     ctx.stroke();
     ctx.restore();
 
-    // decoração do chão (parallax rápido)
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 3;
@@ -301,9 +298,10 @@
     ctx.restore();
   }
 
-  // ============ DIFICULDADE / VELOCIDADE ============
+  // ============ DIFICULDADE / VELOCIDADE INFINITA ============
   function updateSpeed() {
-    speed = Math.min(MAX_SPEED, BASE_SPEED + score * SPEED_PER_SCORE);
+    // A velocidade cresce sem limite superior de forma continua
+    speed = BASE_SPEED + score * SPEED_PER_SCORE;
   }
 
   // ============ CICLO DE ESTADOS ============
@@ -335,8 +333,6 @@
 
   // ============ LOOP PRINCIPAL ============
   function update(dt) {
-    // congela o cenário (parallax/dia-noite) durante o Game Over,
-    // mas mantém as partículas (explosão de impacto) animando até se dissiparem
     if (state !== STATE.GAMEOVER) {
       updateBackground(dt);
     }
@@ -347,12 +343,10 @@
       player.update(dt, speed);
       obstacles.update(dt, speed, score);
 
-      // poeira nos pés enquanto corre no chão
       if (!player.isJumping && Math.random() < 0.5) {
         spawnDustParticles(player.x + player.width * 0.3, player.y + player.height - 2, 1);
       }
 
-      // pontuação cresce com o tempo/distância percorrida
       score += dt * (60 + speed * 0.05);
 
       if (score - lastScoreTickAt > 100) {
@@ -368,7 +362,6 @@
         endGame();
       }
     } else if (state === STATE.GAMEOVER) {
-      // pequena inércia de partículas/cenário; física do jogador continua parada
       player.update(dt, 0);
     }
   }
@@ -389,7 +382,6 @@
     if (!lastTime) lastTime = timestamp;
     let dt = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
-    // limita dt para evitar saltos grandes (ex: aba em background)
     dt = Math.min(dt, 1 / 20);
 
     update(dt);

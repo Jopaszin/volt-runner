@@ -1,14 +1,14 @@
 /**
  * obstacles.js
- * Geração procedural de obstáculos, com dificuldade progressiva
- * e garantia de espaçamento sempre superável por um jogador habilidoso.
+ * Geração procedural de obstáculos com altura corrigida para voador
+ * e controle rigoroso de distância para evitar sobreposição de combos.
  */
 
 const OBSTACLE_TYPES = {
-  LOW: 'low',       // pequeno no chão -> pular
-  TALL: 'tall',      // alto no chão -> pular (exige timing melhor)
+  LOW: 'low',        // pequeno no chão -> pular
+  TALL: 'tall',      // alto no chão -> pular
   WIDE: 'wide',      // cluster largo no chão -> pular
-  FLYING: 'flying'   // obstáculo aéreo -> abaixar
+  FLYING: 'flying'   // obstáculo aéreo -> OBRIGA ABAIXAR
 };
 
 class Obstacle {
@@ -19,27 +19,28 @@ class Obstacle {
 
     switch (type) {
       case OBSTACLE_TYPES.LOW:
-        this.width = 26;
-        this.height = 34;
+        this.width = 28;
+        this.height = 36;
         this.y = groundY - this.height;
         break;
+
       case OBSTACLE_TYPES.TALL:
-        this.width = 24;
-        this.height = 56;
+        this.width = 26;
+        this.height = 58;
         this.y = groundY - this.height;
         break;
+
       case OBSTACLE_TYPES.WIDE:
-        this.width = 58;
-        this.height = 30;
+        this.width = 62;
+        this.height = 32;
         this.y = groundY - this.height;
         break;
+
       case OBSTACLE_TYPES.FLYING:
-        this.width = 44;
-        this.height = 22;
-        // Flutua alto o suficiente para passar por cima de um jogador abaixado
-        // (duckHeight ~30) mas baixo o suficiente para acertar um jogador em pé
-        // (standHeight ~54). A base fica a ~40px do chão, com folga de segurança.
-        this.y = groundY - 40 - this.height;
+        this.width = 46;
+        this.height = 28;
+        // Mantida a altura definida no seu código
+        this.y = groundY - 70; 
         break;
     }
     this.x = x;
@@ -49,7 +50,7 @@ class Obstacle {
   update(dt, speedPxPerSec) {
     this.x -= speedPxPerSec * dt;
     if (this.type === OBSTACLE_TYPES.FLYING) {
-      this.wobble += dt * 4;
+      this.wobble += dt * 5;
     }
   }
 
@@ -58,8 +59,8 @@ class Obstacle {
     return {
       x: this.x + pad,
       y: this.y + pad,
-      width: this.width - pad * 2,
-      height: this.height - pad * 2
+      width: Math.max(1, this.width - pad * 2),
+      height: Math.max(1, this.height - pad * 2)
     };
   }
 
@@ -69,7 +70,7 @@ class Obstacle {
 
   draw(ctx) {
     ctx.save();
-    const glow = this.type === OBSTACLE_TYPES.FLYING ? 'rgba(255,47,176,0.55)' : 'rgba(255,210,63,0.5)';
+    const glow = this.type === OBSTACLE_TYPES.FLYING ? 'rgba(255,47,176,0.65)' : 'rgba(255,210,63,0.55)';
     const color = this.type === OBSTACLE_TYPES.FLYING ? '#ff2fb0' : '#ffd23f';
 
     ctx.shadowColor = glow;
@@ -77,7 +78,7 @@ class Obstacle {
     ctx.fillStyle = color;
 
     if (this.type === OBSTACLE_TYPES.FLYING) {
-      const floatY = this.y + Math.sin(this.wobble) * 4;
+      const floatY = this.y + Math.sin(this.wobble) * 3;
       ctx.beginPath();
       ctx.moveTo(this.x, floatY + this.height / 2);
       ctx.lineTo(this.x + this.width * 0.25, floatY);
@@ -87,15 +88,15 @@ class Obstacle {
       ctx.lineTo(this.x + this.width * 0.25, floatY + this.height);
       ctx.closePath();
       ctx.fill();
+
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(this.x + 4, floatY + this.height / 2);
       ctx.lineTo(this.x + this.width - 4, floatY + this.height / 2);
       ctx.stroke();
     } else if (this.type === OBSTACLE_TYPES.WIDE) {
-      // cluster de 3 blocos formando um obstáculo largo
       const segW = this.width / 3 - 3;
       for (let i = 0; i < 3; i++) {
         const bx = this.x + i * (segW + 4);
@@ -107,13 +108,13 @@ class Obstacle {
         ctx.fill();
       }
     } else {
-      // low / tall -> cristal/pico
       ctx.beginPath();
       ctx.moveTo(this.x, this.y + this.height);
       ctx.lineTo(this.x + this.width * 0.5, this.y);
       ctx.lineTo(this.x + this.width, this.y + this.height);
       ctx.closePath();
       ctx.fill();
+
       ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 1;
@@ -133,59 +134,59 @@ class ObstacleManager {
     this.canvasWidth = canvasWidth;
     this.obstacles = [];
     this.distanceSinceSpawn = 0;
-    this.nextSpawnDistance = 400;
+    this.nextSpawnDistance = 350;
   }
 
   reset() {
     this.obstacles = [];
     this.distanceSinceSpawn = 0;
-    this.nextSpawnDistance = 420;
+    this.nextSpawnDistance = 350;
   }
 
-  /** Define a dificuldade em função da pontuação (ver especificação do jogo). */
   getTier(score) {
-    if (score < 500) return 1;
-    if (score < 1500) return 2;
-    return 3;
+    if (score < 250) return 1;
+    if (score < 700) return 2;
+    if (score < 1500) return 3;
+    return 4;
   }
 
   pickTypePool(tier) {
     if (tier === 1) {
-      return [OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.TALL];
+      return [OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.FLYING];
     }
     if (tier === 2) {
+      return [OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.TALL, OBSTACLE_TYPES.FLYING];
+    }
+    if (tier === 3) {
       return [OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.TALL, OBSTACLE_TYPES.WIDE, OBSTACLE_TYPES.FLYING];
     }
-    return [OBSTACLE_TYPES.LOW, OBSTACLE_TYPES.TALL, OBSTACLE_TYPES.WIDE, OBSTACLE_TYPES.FLYING, OBSTACLE_TYPES.FLYING];
+    return [OBSTACLE_TYPES.TALL, OBSTACLE_TYPES.WIDE, OBSTACLE_TYPES.FLYING, OBSTACLE_TYPES.FLYING];
   }
 
-  /**
-   * Calcula a distância mínima segura até o próximo obstáculo, garantindo
-   * que sempre exista tempo suficiente de reação/pulo em qualquer velocidade.
-   */
-  computeMinGap(speedPxPerSec, tier) {
-    const reactionTime = 0.5;       // tempo mínimo de reação humana confortável
-    const jumpClearTime = 0.75;     // tempo aproximado para completar um pulo (com folga)
-    const safety = tier >= 3 ? 0.08 : 0.18; // combos mais justos apenas no tier mais alto
-    return speedPxPerSec * (reactionTime + jumpClearTime + safety);
+  computeMinGap(speedPxPerSec) {
+    return 320 + (speedPxPerSec * 0.30);
   }
 
   update(dt, speedPxPerSec, score) {
-    // move e remove obstáculos antigos
     this.obstacles.forEach(o => o.update(dt, speedPxPerSec));
     this.obstacles = this.obstacles.filter(o => !o.isOffscreen());
 
-    // controla o espaçamento por distância percorrida (não por tempo fixo),
-    // o que mantém a progressão consistente independente do FPS.
     this.distanceSinceSpawn += speedPxPerSec * dt;
 
     if (this.distanceSinceSpawn >= this.nextSpawnDistance) {
-      this.spawnNext(speedPxPerSec, score);
+      const { lastType, totalLength } = this.spawnNext(speedPxPerSec, score);
       this.distanceSinceSpawn = 0;
-      const tier = this.getTier(score);
-      const minGap = this.computeMinGap(speedPxPerSec, tier);
-      const extra = minGap * (0.3 + Math.random() * 0.9);
-      this.nextSpawnDistance = minGap + extra;
+      
+      let minGap = this.computeMinGap(speedPxPerSec);
+
+      // Se o último item da sequência foi FLYING, adiciona folga para levantar
+      if (lastType === OBSTACLE_TYPES.FLYING) {
+        minGap += 180 + (speedPxPerSec * 0.15);
+      }
+      
+      const extra = Math.random() * 120;
+      // Adiciona a largura ocupada pela sequência ao cálculo da próxima distância
+      this.nextSpawnDistance = minGap + totalLength + extra;
     }
   }
 
@@ -193,24 +194,38 @@ class ObstacleManager {
     const tier = this.getTier(score);
     const pool = this.pickTypePool(tier);
     const type = pool[Math.floor(Math.random() * pool.length)];
-    const obstacle = new Obstacle(type, this.canvasWidth + 20, this.groundY);
-    this.obstacles.push(obstacle);
+    
+    const firstObs = new Obstacle(type, this.canvasWidth + 20, this.groundY);
+    this.obstacles.push(firstObs);
 
-    // combos no tier 3: chance de adicionar um segundo obstáculo próximo,
-    // mas sempre respeitando um espaçamento superável.
-    if (tier >= 3 && Math.random() < 0.28) {
-      const comboGap = this.computeMinGap(speedPxPerSec, tier) * 0.55;
+    let lastType = type;
+    let totalLength = firstObs.width;
+
+    // Chance de Combo (chão + aéreo)
+    const comboChance = tier === 1 ? 0 : (tier === 2 ? 0.15 : 0.25);
+
+    if (Math.random() < comboChance) {
+      const comboGap = 260 + (speedPxPerSec * 0.20);
       const secondType = type === OBSTACLE_TYPES.FLYING ? OBSTACLE_TYPES.LOW : OBSTACLE_TYPES.FLYING;
-      const second = new Obstacle(secondType, this.canvasWidth + 20 + obstacle.width + comboGap, this.groundY);
-      this.obstacles.push(second);
+      
+      const secondObs = new Obstacle(
+        secondType, 
+        this.canvasWidth + 20 + firstObs.width + comboGap, 
+        this.groundY
+      );
+      this.obstacles.push(secondObs);
+
+      lastType = secondType;
+      totalLength += comboGap + secondObs.width;
     }
+
+    return { lastType, totalLength };
   }
 
   draw(ctx) {
     this.obstacles.forEach(o => o.draw(ctx));
   }
 
-  /** Retorna true se algum obstáculo colide com a hitbox do jogador. */
   checkCollision(playerHitbox) {
     return this.obstacles.some(o => {
       const hb = o.getHitbox();
