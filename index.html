@@ -1,111 +1,143 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>VOLT RUNNER</title>
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VOLT RUNNER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div id="app">
+  <div id="game-container">
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
 
-  <!-- ============ GAME STAGE ============ -->
-  <div id="stage">
-    <canvas id="game-canvas"></canvas>
-
-    <!-- HUD (visible durante o jogo) -->
-    <div id="hud" class="hidden">
-      <div class="hud-row">
-        <span id="hud-score">SCORE: 000000</span>
-        <span id="hud-hiscore">HI-SCORE: 000000</span>
+    <!-- UI Overlay / Telas do Jogo -->
+    <div id="ui-overlay">
+      
+      <!-- HUD (Visível durante a partida) -->
+      <div id="hud" class="hud-container hidden">
+        <div class="hud-top">
+          <div class="hud-box">
+            <span class="hud-label">PONTOS</span>
+            <span id="score-display" class="hud-value">000000</span>
+          </div>
+          <div class="hud-box">
+            <span class="hud-label">ENERGIA</span>
+            <div class="energy-bar-container">
+              <div id="energy-bar-fill" class="energy-bar-fill"></div>
+            </div>
+          </div>
+          <div class="hud-box">
+            <span class="hud-label">MULTIPLICADOR</span>
+            <span id="multiplier-display" class="hud-value highlight">x1.0</span>
+          </div>
+        </div>
       </div>
-      <button id="btn-mute" class="icon-btn" aria-label="Ativar/Desativar som">🔊</button>
-    </div>
 
-    <!-- Controles móveis -->
-    <div id="mobile-controls" class="hidden">
-      <button id="btn-jump" class="touch-btn">⬆<span>PULAR</span></button>
-      <button id="btn-duck" class="touch-btn">⬇<span>ABAIXAR</span></button>
-    </div>
-
-    <!-- ============ MENU PRINCIPAL ============ -->
-    <div id="screen-menu" class="screen">
-      <div class="screen-inner">
-        <h1 class="game-title">VOLT<span class="accent">RUNNER</span></h1>
-        <p class="subtitle">corra. desvie. sobreviva.</p>
+      <!-- Menu Principal -->
+      <div id="screen-menu" class="screen active">
+        <h1 class="game-title">VOLT<span class="title-accent">RUNNER</span></h1>
+        <p class="game-subtitle">CORRA. COLETE ENERGIA. DESVIE DOS OBSTÁCULOS.</p>
+        
+        <div class="menu-best-score">
+          MAIOR PONTUAÇÃO: <span id="menu-best-score-val">0</span>
+        </div>
 
         <div class="menu-buttons">
-          <button id="btn-play" class="btn btn-primary">▶ JOGAR</button>
-          <button id="btn-ranking" class="btn">🏆 RANKING</button>
-          <button id="btn-howto" class="btn">❓ COMO JOGAR</button>
-        </div>
-
-        <p class="best-score">MELHOR PONTUAÇÃO: <span id="menu-best-score">0</span></p>
-
-        <button id="btn-mute-menu" class="icon-btn sound-toggle">🔊 SOM</button>
-      </div>
-    </div>
-
-    <!-- ============ COMO JOGAR ============ -->
-    <div id="screen-howto" class="screen hidden">
-      <div class="screen-inner">
-        <h2 class="screen-title">COMO JOGAR</h2>
-        <ul class="howto-list">
-          <li><strong>ESPAÇO / ↑</strong> — pular sobre obstáculos baixos</li>
-          <li><strong>↓</strong> — abaixar para desviar de obstáculos aéreos</li>
-          <li><strong>Toque na tela</strong> (mobile) — use os botões ⬆ e ⬇</li>
-          <li>Sobreviva o máximo de tempo possível para aumentar sua pontuação</li>
-          <li>A velocidade aumenta gradualmente — fique atento!</li>
-          <li>Ao colidir com um obstáculo, a partida termina</li>
-        </ul>
-        <button id="btn-howto-back" class="btn btn-primary">VOLTAR</button>
-      </div>
-    </div>
-
-    <!-- ============ RANKING ============ -->
-    <div id="screen-ranking" class="screen hidden">
-      <div class="screen-inner">
-        <h2 class="screen-title">🏆 TOP 10</h2>
-        <ol id="ranking-list" class="ranking-list"></ol>
-        <p id="ranking-empty" class="ranking-empty hidden">Nenhuma pontuação registrada ainda.</p>
-        <button id="btn-ranking-back" class="btn btn-primary">VOLTAR</button>
-      </div>
-    </div>
-
-    <!-- ============ GAME OVER ============ -->
-    <div id="screen-gameover" class="screen hidden">
-      <div class="screen-inner">
-        <h2 class="screen-title gameover-title">GAME OVER</h2>
-        <p id="new-record-banner" class="new-record hidden">🎉 NOVO RECORDE! VOCÊ ENTROU NO TOP 10! 🎉</p>
-
-        <div class="score-summary">
-          <p>PONTUAÇÃO: <span id="final-score">0</span></p>
-          <p>RECORDE: <span id="final-best">0</span></p>
-        </div>
-
-        <div id="name-entry" class="name-entry hidden">
-          <label for="player-name">DIGITE SEU NOME:</label>
-          <input id="player-name" type="text" maxlength="15" placeholder="JOGADOR" autocomplete="off">
-          <button id="btn-save-score" class="btn btn-primary">SALVAR NO RANKING</button>
-        </div>
-
-        <div class="gameover-buttons">
-          <button id="btn-retry" class="btn btn-primary">▶ JOGAR NOVAMENTE</button>
-          <button id="btn-gameover-menu" class="btn">MENU</button>
+          <button id="btn-start" class="btn btn-primary">JOGAR</button>
+          <button id="btn-ranking" class="btn btn-secondary">RANKING</button>
+          <button id="btn-controls" class="btn btn-secondary">CONTROLES</button>
         </div>
       </div>
-    </div>
 
+      <!-- Tela de Controles / Instruções -->
+      <div id="screen-controls" class="screen hidden">
+        <h2>COMO JOGAR</h2>
+        <div class="controls-guide">
+          <div class="control-item">
+            <kbd>ESPAÇO</kbd> ou <kbd>SETA CIMA</kbd>
+            <span>Pular / Pulo Duplo</span>
+          </div>
+          <div class="control-item">
+            <kbd>SETA BAIXO</kbd> ou <kbd>S</kbd>
+            <span>Agachar (Deslizar)</span>
+          </div>
+          <div class="control-item">
+            <kbd>P</kbd> ou <kbd>ESC</kbd>
+            <span>Pausar</span>
+          </div>
+        </div>
+        <button id="btn-back-controls" class="btn btn-secondary">VOLTAR</button>
+      </div>
+
+      <!-- Tela de Pausa -->
+      <div id="screen-pause" class="screen hidden">
+        <h2>JOGO PAUSADO</h2>
+        <div class="menu-buttons">
+          <button id="btn-resume" class="btn btn-primary">CONTINUAR</button>
+          <button id="btn-restart-pause" class="btn btn-secondary">REINICIAR</button>
+          <button id="btn-quit-pause" class="btn btn-secondary">MENU PRINCIPAL</button>
+        </div>
+      </div>
+
+      <!-- Tela de Game Over -->
+      <div id="screen-gameover" class="screen hidden">
+        <h2 class="danger-text">GAME OVER</h2>
+        
+        <div class="final-stats">
+          <p>PONTUAÇÃO FINAL: <span id="final-score" class="highlight">0</span></p>
+          <p>DISTÂNCIA PERCORRIDA: <span id="final-distance">0m</span></p>
+          <p>ORBES COLETADAS: <span id="final-orbs">0</span></p>
+        </div>
+
+        <!-- Entrada de Nome para Ranking -->
+        <div id="name-entry-container" class="name-entry hidden">
+          <p class="new-record-text">NOVO RECORDE!</p>
+          <input type="text" id="player-name-input" maxlength="15" placeholder="DIGITE SEU NOME" autocomplete="off">
+          <button id="btn-save-score" class="btn btn-primary">SALVAR RECORDE</button>
+        </div>
+
+        <div class="menu-buttons">
+          <button id="btn-restart" class="btn btn-primary">JOGAR NOVAMENTE</button>
+          <button id="btn-menu-gameover" class="btn btn-secondary">MENU PRINCIPAL</button>
+        </div>
+      </div>
+
+      <!-- Tela de Ranking Global -->
+      <div id="screen-ranking" class="screen hidden">
+        <h2>RANKING GLOBAL</h2>
+        <div class="ranking-container">
+          <ol id="ranking-list" class="ranking-list">
+            <!-- Preenchido via JS / Firebase -->
+          </ol>
+          <p id="ranking-empty" class="hidden">NENHUM RECORDE REGISTRADO AINDA.</p>
+        </div>
+        <button id="btn-back-ranking" class="btn btn-secondary">VOLTAR</button>
+      </div>
+
+    </div>
   </div>
-</div>
 
-<script src="js/storage.js"></script>
-<script src="js/ranking.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/player.js"></script>
-<script src="js/obstacles.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/game.js"></script>
+  <!-- Scripts do Jogo -->
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+
+  <!-- SDK do Firebase (Compat v9) para o Ranking Global em Nuvem -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Ranking atualizado para comunicação com a nuvem -->
+  <script src="js/ranking.js"></script>
+
+  <script src="js/player.js"></script>
+  <script src="js/obstacles.js"></script>
+  <script src="js/collectibles.js"></script>
+  <script src="js/background.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
