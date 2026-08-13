@@ -1,6 +1,6 @@
 /**
  * ranking.js
- * Ranking TOP 10 sincronizado com o Realtime Database do Firebase.
+ * Ranking TOP 10 sincronizado com o Realtime Database do Firebase (Com UID único por jogador).
  */
 const Ranking = (() => {
   const KEY = 'ranking';
@@ -47,7 +47,7 @@ const Ranking = (() => {
     if (!db) return getTop10();
 
     try {
-      const snapshot = await db.ref('scores').once('value');
+      const snapshot = await db.ref('ranking').once('value');
       const data = snapshot.val();
 
       if (data) {
@@ -75,11 +75,12 @@ const Ranking = (() => {
     return name;
   }
 
-  function addScore(name, score) {
+  async function addScore(name, score) {
     const cleanName = sanitizeName(name);
     if (!cleanName) return { added: false, top10: getTop10() };
 
     const finalScore = Math.max(0, Math.floor(score));
+    const uid = window.playerUid; // Pega o ID gerado pelo login anônimo
 
     const entry = {
       name: cleanName,
@@ -93,13 +94,34 @@ const Ranking = (() => {
     list = sortRanking(list).slice(0, MAX_ENTRIES);
     saveRanking(list);
 
-    // 2. Envia para a nuvem
+    // 2. Envia para a nuvem usando o UID como chave (evita duplicadas do mesmo jogador)
     if (db) {
-      db.ref('scores').push({
-        name: cleanName,
-        score: finalScore,
-        createdAt: Date.now()
-      }).catch(err => console.error("Erro ao salvar no banco:", err));
+      const userRef = db.ref('ranking/' + (uid ? uid : 'guest_' + Date.now()));
+      
+      try {
+        const snapshot = await userRef.once('value');
+        const dadosAntigos = snapshot.val();
+
+        if (dadosAntigos) {
+          // Se o usuário já existe no banco, só atualiza se a pontuação nova for maior
+          if (finalScore > dadosAntigos.score) {
+            await userRef.set({
+              name: cleanName,
+              score: finalScore,
+              createdAt: dadosAntigos.createdAt || Date.now()
+            });
+          }
+        } else {
+          // Primeira vez que o jogador entra no ranking global
+          await userRef.set({
+            name: cleanName,
+            score: finalScore,
+            createdAt: Date.now()
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao salvar no banco:", err);
+      }
     }
 
     return { added: true, top10: list };

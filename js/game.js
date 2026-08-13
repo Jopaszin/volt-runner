@@ -300,7 +300,6 @@
 
   // ============ DIFICULDADE / VELOCIDADE INFINITA ============
   function updateSpeed() {
-    // A velocidade cresce sem limite superior de forma continua
     speed = BASE_SPEED + score * SPEED_PER_SCORE;
   }
 
@@ -392,6 +391,16 @@
 
   // ============ INICIALIZAÇÃO ============
   function init() {
+    // 🔐 Autenticação anônima do Firebase para gerar o UID único do jogador
+    firebase.auth().signInAnonymously()
+      .then((userCredential) => {
+        window.playerUid = userCredential.user.uid;
+        console.log("Jogador autenticado com ID anônimo:", window.playerUid);
+      })
+      .catch((error) => {
+        console.error("Erro na autenticação anônima:", error.message);
+      });
+
     resizeCanvas();
     player = new Player(groundY);
     obstacles = new ObstacleManager(groundY, cssWidth);
