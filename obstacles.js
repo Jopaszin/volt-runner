@@ -37,7 +37,7 @@ class Obstacle {
         break;
 
       case OBSTACLE_TYPES.FLYING:
-        this.width = 46;
+        this.width = 58;
         this.height = 40;
         // Mantida a altura definida no seu código
         this.y = groundY - 78; 
