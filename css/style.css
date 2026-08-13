@@ -18,8 +18,10 @@ html, body{
   margin:0;
   padding:0;
   width:100%;
-  height:100%;
-  overflow:hidden;
+  /* MUDANÇA: Permite que a página role para baixo para ver o Pix */
+  min-height:100vh;
+  overflow-x:hidden;
+  overflow-y:auto; 
   background: var(--bg-deep);
   font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: var(--text);
@@ -30,7 +32,8 @@ html, body{
 
 #app{
   width:100%;
-  height:100%;
+  /* MUDANÇA: O jogo ocupa no mínimo a tela inteira, empurrando o Pix para baixo */
+  min-height:100vh;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -337,3 +340,89 @@ canvas#game-canvas{
 /* scrollbar tweak */
 ::-webkit-scrollbar{ width:6px; }
 ::-webkit-scrollbar-thumb{ background: rgba(0,240,255,0.3); border-radius:4px; }
+
+
+/* ============ SEÇÃO PIX / APOIO ============ */
+.pix-container {
+  max-width: 500px;
+  margin: 40px auto 60px auto;
+  padding: 24px;
+  background: rgba(10, 15, 30, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+  text-align: center;
+  color: #ffffff;
+}
+
+.pix-container h3 {
+  color: var(--accent);
+  margin: 0 0 12px 0;
+  font-size: 1.3rem;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.pix-container p {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.pix-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--accent);
+  flex-wrap: wrap;
+}
+
+.pix-label {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.pix-box code {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 1.05rem;
+  background: rgba(0, 240, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+#btn-copy-pix {
+  background: var(--accent);
+  color: #031018;
+  border: none;
+  padding: 8px 16px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#btn-copy-pix:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+.pix-toast {
+  display: block;
+  opacity: 0;
+  color: var(--success);
+  font-size: 0.9rem;
+  margin-top: 12px;
+  font-weight: bold;
+  transition: opacity 0.3s ease;
+  text-shadow: 0 0 8px rgba(53, 242, 165, 0.4);
+}
+
+.pix-toast.show {
+  opacity: 1;
+}
