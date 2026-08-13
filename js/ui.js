@@ -123,7 +123,11 @@ const UI = (() => {
     
     if (result.added) {
       AudioFX.playRankingEntry();
+      
+      // Oculta o banner de recorde e a caixinha de nome ao salvar com sucesso
+      els.newRecordBanner.classList.add('hidden');
       els.nameEntry.classList.add('hidden');
+      
       refreshMenuBestScore();
       // fluxo: após salvar, mostra o ranking já atualizado com o TOP 10
       refreshRankingScreen();
