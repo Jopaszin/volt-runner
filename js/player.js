@@ -20,6 +20,7 @@ class Player {
 
     this.velocityY = 0;
     this.gravity = 2600;      // px/s^2
+    this.fastFallGravity = 8000; // Gravidade aumentada ao agachar no ar (Fast Fall)
     this.jumpForce = -650;    // px/s
     this.maxFallSpeed = 1800;
 
@@ -60,13 +61,18 @@ class Player {
 
   setDucking(active) {
     if (this.isDead) return;
-    if (active && !this.isJumping) {
-      if (!this.isDucking) AudioFX.playDuck();
+    
+    if (active) {
+      if (!this.isDucking && !this.isJumping) AudioFX.playDuck();
       this.isDucking = true;
       this.width = this.duckWidth;
       this.height = this.duckHeight;
-      this.y = this.groundY - this.height;
-    } else if (!active) {
+      
+      // Ajusta posição visual imediatamente se estiver no chão
+      if (!this.isJumping) {
+        this.y = this.groundY - this.height;
+      }
+    } else {
       this.isDucking = false;
       this.width = this.standWidth;
       this.height = this.standHeight;
@@ -101,10 +107,13 @@ class Player {
 
     // física vertical
     if (this.isJumping) {
-      this.velocityY += this.gravity * dt;
+      // Aplica gravidade normal ou gravidade de queda rápida se estiver agachado no ar
+      const currentGravity = this.isDucking ? this.fastFallGravity : this.gravity;
+      this.velocityY += currentGravity * dt;
       this.velocityY = Math.min(this.velocityY, this.maxFallSpeed);
       this.y += this.velocityY * dt;
 
+      // Colisão com o chão
       if (this.y >= this.groundY - this.height) {
         this.y = this.groundY - this.height;
         this.isJumping = false;
