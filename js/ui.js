@@ -1,186 +1,226 @@
 /**
- * js/ui.js - Gerenciador da Interface de Usuário
+ * ui.js
+ * Controla as telas (menu, como jogar, ranking, game over) e o HUD.
+ * Não conhece detalhes do loop do jogo — comunica-se por callbacks.
  */
 const UI = (() => {
-  let els = {};
+  const els = {};
   let callbacks = {};
   let pendingScore = 0;
 
-  function init(options = {}) {
-    callbacks = options;
-    cacheElements();
-    bindEvents();
-    refreshMenuBestScore();
-  }
-
   function cacheElements() {
-    els = {
-      // Telas
-      hud: document.getElementById('hud'),
-      screenMenu: document.getElementById('screen-menu'),
-      screenControls: document.getElementById('screen-controls'),
-      screenPause: document.getElementById('screen-pause'),
-      screenGameover: document.getElementById('screen-gameover'),
-      screenRanking: document.getElementById('screen-ranking'),
+    els.hud = document.getElementById('hud');
+    els.hudScore = document.getElementById('hud-score');
+    els.hudHiscore = document.getElementById('hud-hiscore');
+    els.mobileControls = document.getElementById('mobile-controls');
 
-      // Botões Menu Principal
-      btnStart: document.getElementById('btn-start'),
-      btnRanking: document.getElementById('btn-ranking'),
-      btnControls: document.getElementById('btn-controls'),
-
-      // Botões Controles
-      btnBackControls: document.getElementById('btn-back-controls'),
-
-      // Botões Pausa
-      btnResume: document.getElementById('btn-resume'),
-      btnRestartPause: document.getElementById('btn-restart-pause'),
-      btnQuitPause: document.getElementById('btn-quit-pause'),
-
-      // Botões Game Over
-      btnRestart: document.getElementById('btn-restart'),
-      btnMenuGameover: document.getElementById('btn-menu-gameover'),
-      btnSaveScore: document.getElementById('btn-save-score'),
-
-      // Botões Ranking
-      btnBackRanking: document.getElementById('btn-back-ranking'),
-
-      // Elementos de Entrada e Exibição
-      playerNameInput: document.getElementById('player-name-input'),
-      nameEntryContainer: document.getElementById('name-entry-container'),
-      
-      // Displays do HUD e Game Over
-      scoreDisplay: document.getElementById('score-display'),
-      energyBarFill: document.getElementById('energy-bar-fill'),
-      multiplierDisplay: document.getElementById('multiplier-display'),
-      finalScore: document.getElementById('final-score'),
-      finalDistance: document.getElementById('final-distance'),
-      finalOrbs: document.getElementById('final-orbs'),
-      menuBestScoreVal: document.getElementById('menu-best-score-val'),
-      rankingList: document.getElementById('ranking-list'),
-      rankingEmpty: document.getElementById('ranking-empty')
+    els.screens = {
+      menu: document.getElementById('screen-menu'),
+      howto: document.getElementById('screen-howto'),
+      ranking: document.getElementById('screen-ranking'),
+      gameover: document.getElementById('screen-gameover')
     };
+
+    els.menuBestScore = document.getElementById('menu-best-score');
+    els.btnPlay = document.getElementById('btn-play');
+    els.btnRanking = document.getElementById('btn-ranking');
+    els.btnHowto = document.getElementById('btn-howto');
+    els.btnHowtoBack = document.getElementById('btn-howto-back');
+    els.btnRankingBack = document.getElementById('btn-ranking-back');
+
+    els.rankingList = document.getElementById('ranking-list');
+    els.rankingEmpty = document.getElementById('ranking-empty');
+
+    els.finalScore = document.getElementById('final-score');
+    els.finalBest = document.getElementById('final-best');
+    els.newRecordBanner = document.getElementById('new-record-banner');
+    els.nameEntry = document.getElementById('name-entry');
+    els.playerName = document.getElementById('player-name');
+    els.btnSaveScore = document.getElementById('btn-save-score');
+    els.btnRetry = document.getElementById('btn-retry');
+    els.btnGameoverMenu = document.getElementById('btn-gameover-menu');
+
+    els.btnMute = document.getElementById('btn-mute');
+    els.btnMuteMenu = document.getElementById('btn-mute-menu');
+
+    els.btnJumpTouch = document.getElementById('btn-jump');
+    els.btnDuckTouch = document.getElementById('btn-duck');
   }
 
-  function bindEvents() {
-    if (els.btnStart) els.btnStart.addEventListener('click', () => { AudioFX.playSelect(); if (callbacks.onStart) callbacks.onStart(); });
-    if (els.btnRanking) els.btnRanking.addEventListener('click', () => { AudioFX.playSelect(); showRankingScreen(); });
-    if (els.btnControls) els.btnControls.addEventListener('click', () => { AudioFX.playSelect(); showScreen('controls'); });
+  function hideAllScreens() {
+    Object.values(els.screens).forEach(s => s.classList.add('hidden'));
+  }
 
-    if (els.btnBackControls) els.btnBackControls.addEventListener('click', () => { AudioFX.playSelect(); showScreen('menu'); });
+  function showScreen(name) {
+    hideAllScreens();
+    if (els.screens[name]) els.screens[name].classList.remove('hidden');
+  }
 
-    if (els.btnResume) els.btnResume.addEventListener('click', () => { AudioFX.playSelect(); if (callbacks.onResume) callbacks.onResume(); });
-    if (els.btnRestartPause) els.btnRestartPause.addEventListener('click', () => { AudioFX.playSelect(); if (callbacks.onRestart) callbacks.onRestart(); });
-    if (els.btnQuitPause) els.btnQuitPause.addEventListener('click', () => { AudioFX.playSelect(); if (callbacks.onQuit) callbacks.onQuit(); });
+  function hideAllScreensForGameplay() {
+    hideAllScreens();
+    els.hud.classList.remove('hidden');
+    if (isTouchDevice()) els.mobileControls.classList.remove('hidden');
+  }
 
-    if (els.btnRestart) els.btnRestart.addEventListener('click', () => { AudioFX.playSelect(); if (callbacks.onRestart) callbacks.onRestart(); });
-    if (els.btnMenuGameover) els.btnMenuGameover.addEventListener('click', () => { AudioFX.playSelect(); if (callbacks.onQuit) callbacks.onQuit(); });
+  function isTouchDevice() {
+    return ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  }
 
-    if (els.btnSaveScore) els.btnSaveScore.addEventListener('click', handleSaveScore);
-    if (els.playerNameInput) {
-      els.playerNameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleSaveScore();
-      });
+  function updateHUD(score, hiscore) {
+    els.hudScore.textContent = `SCORE: ${formatScore(score)}`;
+    els.hudHiscore.textContent = `HI-SCORE: ${formatScore(hiscore)}`;
+  }
+
+  function formatScore(n) {
+    return String(Math.floor(n)).padStart(6, '0');
+  }
+
+  function refreshMenuBestScore() {
+    els.menuBestScore.textContent = Ranking.formatScore(Ranking.getBestScore());
+  }
+
+  function refreshMuteIcons() {
+    const muted = AudioFX.isMuted();
+    const icon = muted ? '🔇' : '🔊';
+    els.btnMute.textContent = icon;
+    els.btnMuteMenu.textContent = `${icon} SOM`;
+  }
+
+  function showGameOverScreen({ score, best, madeTop10 }) {
+    pendingScore = score;
+    els.finalScore.textContent = Ranking.formatScore(score);
+    els.finalBest.textContent = Ranking.formatScore(best);
+
+    if (madeTop10) {
+      els.newRecordBanner.classList.remove('hidden');
+      els.nameEntry.classList.remove('hidden');
+      els.playerName.value = '';
+      setTimeout(() => els.playerName.focus(), 50);
+    } else {
+      els.newRecordBanner.classList.add('hidden');
+      els.nameEntry.classList.add('hidden');
     }
 
-    if (els.btnBackRanking) els.btnBackRanking.addEventListener('click', () => { AudioFX.playSelect(); showScreen('menu'); });
+    els.hud.classList.add('hidden');
+    els.mobileControls.classList.add('hidden');
+    showScreen('gameover');
   }
 
-  /**
-   * Salva a pontuação enviando para o Firebase na nuvem
-   */
-  async function handleSaveScore() {
-    const name = els.playerNameInput ? els.playerNameInput.value : '';
+  function refreshRankingScreen() {
+    Ranking.renderRanking(els.rankingList, els.rankingEmpty);
+  }
+
+  function handleSaveScore() {
+    const name = els.playerName.value;
     if (!name.trim()) {
-      if (els.playerNameInput) {
-        els.playerNameInput.focus();
-        els.playerNameInput.placeholder = 'DIGITE UM NOME VÁLIDO';
-      }
+      els.playerName.focus();
+      els.playerName.placeholder = 'DIGITE UM NOME VÁLIDO';
       return;
     }
-
-    if (els.btnSaveScore) els.btnSaveScore.disabled = true;
-
-    // Envia assincronamente para o Firebase via Ranking.addScore
-    const result = await Ranking.addScore(name, pendingScore);
-
-    if (els.btnSaveScore) els.btnSaveScore.disabled = false;
-
+    const result = Ranking.addScore(name, pendingScore);
     if (result.added) {
       AudioFX.playRankingEntry();
-      if (els.nameEntryContainer) els.nameEntryContainer.classList.add('hidden');
+      els.nameEntry.classList.add('hidden');
       refreshMenuBestScore();
-      showRankingScreen();
+      // fluxo: após salvar, mostra o ranking já atualizado com o TOP 10
+      refreshRankingScreen();
+      showScreen('ranking');
       if (callbacks.onScoreSaved) callbacks.onScoreSaved();
     }
   }
 
-  function showScreen(screenName) {
-    const screens = [els.screenMenu, els.screenControls, els.screenPause, els.screenGameover, els.screenRanking];
-    screens.forEach(s => { if (s) s.classList.add('hidden'); });
+  function bindEvents() {
+    els.btnPlay.addEventListener('click', () => {
+      AudioFX.playButton();
+      hideAllScreensForGameplay();
+      if (callbacks.onPlay) callbacks.onPlay();
+    });
 
-    if (screenName === 'menu' && els.screenMenu) els.screenMenu.classList.remove('hidden');
-    if (screenName === 'controls' && els.screenControls) els.screenControls.classList.remove('hidden');
-    if (screenName === 'pause' && els.screenPause) els.screenPause.classList.remove('hidden');
-    if (screenName === 'gameover' && els.screenGameover) els.screenGameover.classList.remove('hidden');
-    if (screenName === 'ranking' && els.screenRanking) els.screenRanking.classList.remove('hidden');
-  }
+    els.btnRanking.addEventListener('click', () => {
+      AudioFX.playButton();
+      refreshRankingScreen();
+      showScreen('ranking');
+    });
 
-  function setHUDVisible(visible) {
-    if (!els.hud) return;
-    if (visible) {
-      els.hud.classList.remove('hidden');
-    } else {
-      els.hud.classList.add('hidden');
-    }
-  }
+    els.btnHowto.addEventListener('click', () => {
+      AudioFX.playButton();
+      showScreen('howto');
+    });
 
-  function updateHUD(score, energyPercent, multiplier) {
-    if (els.scoreDisplay) els.scoreDisplay.textContent = String(Math.floor(score)).padStart(6, '0');
-    if (els.energyBarFill) els.energyBarFill.style.width = `${Math.max(0, Math.min(100, energyPercent))}%`;
-    if (els.multiplierDisplay) els.multiplierDisplay.textContent = `x${multiplier.toFixed(1)}`;
-  }
+    els.btnHowtoBack.addEventListener('click', () => {
+      AudioFX.playButton();
+      showScreen('menu');
+    });
 
-  function showGameOver(score, distance, orbs) {
-    pendingScore = score;
+    els.btnRankingBack.addEventListener('click', () => {
+      AudioFX.playButton();
+      showScreen('menu');
+    });
 
-    if (els.finalScore) els.finalScore.textContent = Ranking.formatScore(score);
-    if (els.finalDistance) els.finalDistance.textContent = `${Math.floor(distance)}m`;
-    if (els.finalOrbs) els.finalOrbs.textContent = orbs;
+    els.btnRetry.addEventListener('click', () => {
+      AudioFX.playButton();
+      hideAllScreensForGameplay();
+      if (callbacks.onPlay) callbacks.onPlay();
+    });
 
-    if (Ranking.isTop10(score)) {
-      if (els.nameEntryContainer) els.nameEntryContainer.classList.remove('hidden');
-      if (els.playerNameInput) {
-        els.playerNameInput.value = '';
-        els.playerNameInput.focus();
+    els.btnGameoverMenu.addEventListener('click', () => {
+      AudioFX.playButton();
+      refreshMenuBestScore();
+      showScreen('menu');
+    });
+
+    els.btnSaveScore.addEventListener('click', handleSaveScore);
+    els.playerName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSaveScore();
+    });
+
+    els.btnMute.addEventListener('click', () => {
+      AudioFX.toggleMuted();
+      refreshMuteIcons();
+    });
+    els.btnMuteMenu.addEventListener('click', () => {
+      AudioFX.toggleMuted();
+      refreshMuteIcons();
+      AudioFX.playButton();
+    });
+
+    // controles de toque (mobile)
+    const bindTouch = (el, onDown, onUp) => {
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); onDown(); }, { passive: false });
+      if (onUp) {
+        el.addEventListener('touchend', (e) => { e.preventDefault(); onUp(); }, { passive: false });
+        el.addEventListener('touchcancel', (e) => { e.preventDefault(); onUp(); }, { passive: false });
       }
-    } else {
-      if (els.nameEntryContainer) els.nameEntryContainer.classList.add('hidden');
-    }
+      // fallback para testes em desktop com mouse
+      el.addEventListener('mousedown', () => onDown());
+      if (onUp) el.addEventListener('mouseup', () => onUp());
+    };
 
-    setHUDVisible(false);
-    showScreen('gameover');
+    bindTouch(els.btnJumpTouch, () => callbacks.onJumpPress && callbacks.onJumpPress());
+    bindTouch(
+      els.btnDuckTouch,
+      () => callbacks.onDuckPress && callbacks.onDuckPress(true),
+      () => callbacks.onDuckPress && callbacks.onDuckPress(false)
+    );
   }
 
-  async function showRankingScreen() {
-    showScreen('ranking');
-    if (els.rankingList) {
-      await Ranking.renderRanking(els.rankingList, els.rankingEmpty);
-    }
-  }
-
-  function refreshMenuBestScore() {
-    if (els.menuBestScoreVal) {
-      els.menuBestScoreVal.textContent = Ranking.formatScore(Ranking.getBestScore());
-    }
+  function init(userCallbacks) {
+    callbacks = userCallbacks || {};
+    cacheElements();
+    bindEvents();
+    refreshMenuBestScore();
+    refreshMuteIcons();
+    showScreen('menu');
   }
 
   return {
     init,
     showScreen,
-    setHUDVisible,
     updateHUD,
-    showGameOver,
-    showRankingScreen,
-    refreshMenuBestScore
+    showGameOverScreen,
+    refreshRankingScreen,
+    refreshMenuBestScore,
+    refreshMuteIcons,
+    isTouchDevice
   };
 })();
