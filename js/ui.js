@@ -110,14 +110,17 @@ const UI = (() => {
     Ranking.renderRanking(els.rankingList, els.rankingEmpty);
   }
 
-  function handleSaveScore() {
+  async function handleSaveScore() {
     const name = els.playerName.value;
     if (!name.trim()) {
       els.playerName.focus();
       els.playerName.placeholder = 'DIGITE UM NOME VÁLIDO';
       return;
     }
-    const result = Ranking.addScore(name, pendingScore);
+    
+    // Aguarda o salvamento assíncrono (Firebase + Local)
+    const result = await Ranking.addScore(name, pendingScore);
+    
     if (result.added) {
       AudioFX.playRankingEntry();
       els.nameEntry.classList.add('hidden');
